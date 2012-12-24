@@ -5,7 +5,7 @@
 
 //error_reporting(0);
 error_reporting(E_ALL ^ E_NOTICE);
-set_time_limit(0);
+set_time_limit(30);
 $font_cim='/www/zandagort/www/img/arial.ttf';
 
 $meret=500;$felmeret=$meret/2;$kep_zoom=5;
@@ -85,90 +85,88 @@ function random_bolygo() {
 	return 10;
 }
 
-//mag
-$cx=0;$cy=0;$rx=20;$ry=20;
-for($y=$cy-$ry;$y<=$cy+$ry;$y++) for($x=$cx-$rx;$x<=$cx+$rx;$x++) {
-	$vx=$x-$cx;$vy=$y-$cy;
-	$r2=pow($vx/$rx,2)+pow($vy/$ry,2);
-	$irany=atan2($vy,$vx)/M_PI*180;
-	if ($r2>=0.1 and $r2<=1) {
-		if ($r2>=0.4 and $r2<=0.8) {
-			$prob = 30;
-		}
-		if ($r2<0.4) {
-			$prob = 30*($r2-0.1)/0.3;
-		}
-		if ($r2>0.8) {
-			$prob = 30*(1-$r2)/0.2;
-		}
-		if (mt_rand(0,999)<$prob) {
-			$x = round($x/$zoom_x*100);
-			$y = round($y/$zoom_y*100);
-			$regio = 1;
-			if ($irany<-80) {
-				$regio = 2;
-			}
-			if ($irany>40) {
-				$regio = 3;
-			}
-			if ($irany>160) {
-				$regio = 2;
-			 } 
-			$planetSize = random_bolygo();
-			put_bolygo($x, $y, $regio, $planetSize, $planetSize === 2);
-		}
-	}
-}
-
+// Admin bolygó :)
 put_bolygo(0, 0, 1, 10, 1);
 
+// TODO settings
+$planetLimit = 200;
+$mapSize = 40;
+
+for ($i = 0; $i < $planetLimit; $i++) {
+	$x = mt_rand(-$mapSize,$mapSize);
+	$y = mt_rand(-$mapSize,$mapSize);
+	if ($x > 0 && $y < 0) {
+		$region = 2;
+	}
+	if ($x > 0 && $y > 0) {
+		$region = 3;
+	}
+	if ($x < 0 && $y > 0) {
+		$region = 4;
+	}
+	if ($x < 0 && $y < 0) {
+		$region = 5;
+	}
+	$planetSize = random_bolygo();
+	put_bolygo(
+		$x, $y,
+		$region,
+		$planetSize,
+		$planetSize === 2
+	);
+}
+
 //bolygok kirajzolasa
-for ($hy=-$max_hexa_tav;$hy<=$max_hexa_tav;$hy++) {
-	for ($hx=-$max_hexa_tav;$hx<=$max_hexa_tav;$hx++) {
-		if (isset($bolygok[$hx][$hy])) {
-			$reg_b[$bolygok[$hx][$hy][0]]++;
-			$meret_b[$bolygok[$hx][$hy][1]]++;
-			$xx=$hx*round(125*sqrt(3));
-			$yy=$hy*125*2-(($hx%2)?0:125);
-			imagefilledellipse(
-				$kep,
-				$felmeret + $hexa_kep_zoom * $xx,
-				$felmeret + $hexa_kep_zoom * $yy,
-				3,
-				3,
-				$regio_szinek[ $bolygok[$hx][$hy][0] ]
-			);
-		}
+foreach($bolygok as $y => $planetsY) {
+	foreach($planetsY as $x => $planetData) {
+		$planetRegion  = $planetData[0];
+		$planetSize    = $planetData[1];
+		$planetRegable = $planetData[2];
+
+		$reg_b[ $planetRegion ]++;
+		$meret_b[ $planetSize ]++;
+		$xx = $x * round(125 * sqrt(3));
+		$yy = $y * 125 * 2 - (($x % 2) ? 0 : 125);
+		imagefilledellipse(
+			$kep,
+			$felmeret + $hexa_kep_zoom * $xx,
+			$felmeret + $hexa_kep_zoom * $yy,
+			3,
+			3,
+			$regio_szinek[ $planetRegion ]
+		);
 	}
 }
+
+
+
 imagettftext($kep,8,0,10,30,$feher,$font_cim,'bolygok szama: ' . $bolygok_szama);
 imagettftext($kep,8,0,10,45,$feher,$font_cim,'regisztralhato: ' . $reg_bolygok_szama);
 
-// regiok szerinti eloszlas
+// regiok szerinti eloszlas (szöveg)
 for($regio=1; $regio<=12; $regio++) {
 	imagettftext($kep,8,0,10,45+15*$regio,$feher,$font_cim,$regio);
 	imagettftext($kep,8,0,30,45+15*$regio,$feher,$font_cim,$reg_b[$regio]);
 }
 
-// bolygó méretek
+// bolygó méretek (szöveg)
 for($meret=1; $meret<=5; $meret++) {
 	imagettftext($kep,8,0,10,245+15*$meret,$feher,$font_cim,(2*$meret) . 'M:');
 	imagettftext($kep,8,0,40,245+15*$meret,$feher,$font_cim,$meret_b[2*$meret]);
 }
 
 // TODO ha megvan a kivant terkep, utana engedd meg, hogy tovabbfusson a kod!
-header('Content-type: image/png');
-imagepng($kep);
-exit;
+//header('Content-type: image/png');
+//imagepng($kep);
+//exit;
 
-require_once '../config.php';
+require_once '../../config.php';
 
-$szerver_ip = 'localhost'; // mert ez nincs configban
 $mysql_username = $zanda_db_user;
 $mysql_password = $zanda_db_password;
 //$szerver_prefix = 'dev'; // ha felül szeretné definiálni a configot
 
-$mysql_csatlakozas=mysql_connect($szerver_ip, $mysql_username, $mysql_password);
+$mysql_csatlakozas = mysql_connect($zanda_db_host, $mysql_username, $mysql_password);
 $result = mysql_select_db('mmog');
 if ($result === false) {
 	exit("Nem letezik az 'mmog' adatbazis. Hozd letre, majd futtasd ujra!\n");
@@ -196,11 +194,15 @@ if (mysql_query('truncate bolygok_'.$szerver_prefix) === false) {
 	) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_hungarian_ci;');
 }
 
-for($hy=-$max_hexa_tav;$hy<=$max_hexa_tav;$hy++) {
-	for($hx=-$max_hexa_tav;$hx<=$max_hexa_tav;$hx++) {
-		if (isset($bolygok[$hx][$hy])) {
-			mysql_query('insert into bolygok_'.$szerver_prefix.' (hexa_x,hexa_y,galaktikus_regio,terulet,alapbol_regisztralhato) values('.$hx.','.$hy.','.$bolygok[$hx][$hy][0].','.$bolygok[$hx][$hy][1].'*1000000,'.$bolygok[$hx][$hy][2].')');
-		}
+// bolygók mentése átmeneti
+foreach($bolygok as $y => $planetsY) {
+	foreach($planetsY as $x => $planetData) {
+		$planetRegion  = $planetData[0];
+		$planetSize    = $planetData[1] * 1000000;
+		$planetRegable = intval($planetData[2]);
+		mysql_query("INSERT INTO bolygok_$szerver_prefix
+			(hexa_x, hexa_y, galaktikus_regio, terulet, alapbol_regisztralhato)
+			VALUES ($x, $y, $planetRegion, $planetSize, $planetRegable);");
 	}
 }
 

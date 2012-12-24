@@ -1,6 +1,10 @@
-<?
+<?php
+
 include('../csatlak.php');
 if (!isset($argv[1]) or $argv[1]!=$zanda_private_key) exit;
+if (!isset($argv[2])) {
+	exit ('Nem adtal meg blokk szamot! (0-7)');
+}
 set_time_limit(0);
 
 function unsigned_parity($x) {return ($x>=0)?($x%2):((-$x)%2);}
@@ -17,8 +21,24 @@ más módon töltöd fel a bolygok táblát (saját generátor)
 ezeket a mezőket kell megadni: (id,x,y,hexa_x,hexa_y,alapbol_regisztralhato,terulet,osztaly,hold,regio)
 */
 
-
+$taskNumber = intval($argv[2]);
+if ($taskNumber >= 0 && $taskNumber < 8) {
+	$task = 'blokk' . $taskNumber;
+	if ($taskNumber === 2 && $argv[3] !== 'force') {
+		exit("Nem feltetlenul szukseges ez a blokk. Reszletekert nezd meg a fajlt!\nHa biztosan futtatni szeretned ezt a blokkot, irdbe a 'force' szot.\n");
+	}
+	if ($taskNumber === 4 && $argv[3] !== 'force') {
+		exit("Hosszu ideig fog futni. Felkeszultel? Reszletekert nezd meg a fajlt!\nHa biztosan futtatni szeretned ezt a blokkot, irdbe a 'force' szot.\n");
+	}
+	if ($taskNumber === 4) {
+		echo "Aktualis allapot ellenorzeshez futtasd az alabbi SQL-t: 'select if(voronoi_bolygo_id=0,0,1) as v,count(1) from hexak group by v'\n";
+	}
+	$task();
+} else {
+	exit("Nincs ilyen blokk.\n");
+}
 //2. lépés: ezeken sorban végigmenni (a biztonság kedvéért érdemes egyesével):
+//blokk0()
 //blokk1();
 //blokk2();//erre csak akkor van szükség, ha nagyon megváltozik a galaxis mérete, és nem fér bele az eddigi hexakörbe
 //blokk3();
@@ -27,21 +47,32 @@ ezeket a mezőket kell megadni: (id,x,y,hexa_x,hexa_y,alapbol_regisztralhato,ter
 //blokk6();
 //blokk7();
 
-
-function blokk0($prefix) {
+function blokk0() {
 	//ZandaNet->celszerver
-	global $mysql_csatlakozas;
-	mysql_query('truncate bolygok',$mysql_csatlakozas);
-	$tavoli_zandanet_csatlak=mysql_connect('HOST','USER','PASSWORD');
-	mysql_select_db('mmog',$tavoli_zandanet_csatlak);
+	global $mysql_csatlakozas, $szerver_prefix, $zanda_db_host, $zanda_db_name, $zanda_db_user, $zanda_db_password;
+	mysql_query('truncate bolygok', $mysql_csatlakozas);
+	$tavoli_zandanet_csatlak = mysql_connect($zanda_db_host, $zanda_db_user, $zanda_db_password);
+	mysql_select_db('mmog', $tavoli_zandanet_csatlak);
 	mysql_query('set names "utf8"',$tavoli_zandanet_csatlak);
-	$r=mysql_query('select id,x,y,hexa_x,hexa_y,alapbol_regisztralhato,terulet,osztaly,hold,galaktikus_regio from bolygok_'.$prefix.' order by id',$tavoli_zandanet_csatlak);
-	while($aux=mysql_fetch_array($r)) {
-		$s='';for($i=0;$i<10;$i++) $s.=','.$aux[$i];
-		echo 'insert into bolygok (id,x,y,hexa_x,hexa_y,alapbol_regisztralhato,terulet,osztaly,hold,regio) values('.substr($s,1).')'."<br />\n";
-		mysql_query('insert into bolygok (id,x,y,hexa_x,hexa_y,alapbol_regisztralhato,terulet,osztaly,hold,regio) values('.substr($s,1).')',$mysql_csatlakozas);
+	$r = mysql_query('select x,y,hexa_x,hexa_y,alapbol_regisztralhato,terulet,osztaly,hold,galaktikus_regio from bolygok_'.$szerver_prefix.' order by x, y',$tavoli_zandanet_csatlak);
+
+	// TODO nem értem miért, de mysql_query($sql, $mysql_csatlakozas) rossz resource-t
+	//      akart hasznalni, ezert kellett ujracsatlakoznom...
+	$mysql_csatlakozas = mysql_connect($zanda_db_host, $zanda_db_user, $zanda_db_password);
+	$result = mysql_select_db($zanda_db_name, $mysql_csatlakozas);
+	while($row = mysql_fetch_object($r)) {
+		$sql = "INSERT INTO bolygok (
+				id, x, y, hexa_x, hexa_y,
+				alapbol_regisztralhato, terulet, osztaly,
+				hold, regio
+			) VALUES (
+				null, {$row->x}, {$row->y}, {$row->hexa_x}, {$row->hexa_y},
+				{$row->alapbol_regisztralhato}, {$row->terulet}, {$row->osztaly},
+				{$row->hold}, {$row->galaktikus_regio}
+			)";
+		mysql_query($sql, $mysql_csatlakozas);
 	}
-	mysql_close($tavoli_zandanet_csatlak);
+	//mysql_close($tavoli_zandanet_csatlak);
 }
 
 function blokk1() {
@@ -59,9 +90,13 @@ function blokk2() {
 	mysql_query('truncate hexak');
 	$bkts3=round(BOLYGOK_KOZTI_TAVOLSAG*sqrt(3));
 	//ha teljes negyzetben akarod
-	//for($y=-340;$y<=340;$y++) for($x=-395;$x<=395;$x++) mysql_query("insert ignore into hexak (x,y) values($x,$y)");
+	for ($y=-50; $y<=50; $y++) {
+		for ($x=-50; $x<=50; $x++) {
+			mysql_query("insert ignore into hexak (x,y) values($x,$y)");
+		}
+	}
 	//ha kor alakban akarod
-	for($y=-340;$y<=340;$y++) for($x=-400;$x<=400;$x++) if (pow($x*$bkts3/40000,2)+pow(($y*BOLYGOK_KOZTI_TAVOLSAG*2-(($x%2==0)?0:BOLYGOK_KOZTI_TAVOLSAG))/40000,2)<=4.5) mysql_query("insert ignore into hexak (x,y) values($x,$y)");
+	//for($y=-340;$y<=340;$y++) for($x=-400;$x<=400;$x++) if (pow($x*$bkts3/40000,2)+pow(($y*BOLYGOK_KOZTI_TAVOLSAG*2-(($x%2==0)?0:BOLYGOK_KOZTI_TAVOLSAG))/40000,2)<=4.5) mysql_query("insert ignore into hexak (x,y) values($x,$y)");
 }
 
 
@@ -176,5 +211,6 @@ select id,0 from eroforrasok where tozsdezheto=1');
 
 
 echo 'kesz';
-mysql_close($mysql_csatlakozas);
-?>
+if ($mysql_csatlakozas) {
+	mysql_close($mysql_csatlakozas);
+}

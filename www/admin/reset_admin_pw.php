@@ -3,7 +3,8 @@ include('../csatlak.php');
 if (!isset($argv[1]) or $argv[1]!=$zanda_private_key) exit;
 
 $uid=1;
-$jelszo='password';
+// TODO ezt átírni!
+$jelszo='asdfgh';
 $jelszo_so=randomgen(32);
 $jelszo_hash=hash('whirlpool',$jelszo.$jelszo_so.$rendszer_so);
 $kozos_jelszo_hash=hash('whirlpool',$jelszo.$rendszer_so);

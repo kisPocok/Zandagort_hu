@@ -28,4 +28,4 @@ foreach ($directories as $dir) {
 	makeDir($dir, 0733);
 }
 
-exit('Kész');
+exit("kesz\n");
