@@ -47,14 +47,17 @@ A következőkben mindig csekkold le, hogy a `userek` és a `szovetsegek` tábl�
 
 ## Új galaxis generálása
 
-A `galaxis` könyvtárban találsz néhány fájlt. Ezek nincsenek dokumentálva, szóval magadnak kell rájönnöd a működésükre, leszámítva a következő pár infót.
+Készítettem egy szösszenetet a galaxis generálásáról. Egyszerűsítettem pár dolgot benne:
 
-s7-en két fázisban készült a galaxis, s8-on egyben. A fájlok tele vannak régi maradványokkal. s7-en például egy JPG kép alapján készült a galaxis (a valóban létező Kocsikerék-galaxis egy űrfotójáról), mégis vannak benne algoritmusos maradványok s6-ról (test, belsosegek, farok, uszok, szaj).
+	cd ZANDA_ROOT/www/admin
+	php -f egyeb_telepito.php $zanda_private_key
+	php -f galaxis_telepito.php $zanda_private_key 0
+
+0-tól 7-ig eltérő blokkokra van szétválasztva a kód. 2. és 4. lépés megerősítést vár, amit így kell futtatni: `php -f galaxis_telepito.php $zanda_private_key 4 force`. Előbbit akkor szükséges, ha a pályát átméretezed. Amennyiben a normál dump-ot töltötted be, úgy a 2. blokk előre definiált értékei kicsik lesznek, részletekért nézd meg a kódot (de ilyenkor ez a lépés kihagyható). Utóbbi pedig hosszú ideig is futhat (1-2 óra, pálya méretétől függően, dev dump kb 1 perc!). A többi blokkot mindenképpen futtatni kell, értelemszerűen sorban.
 
 Eredetileg ezek egy külön szerveren futottak, ahol a ZandaNet van. Így az összes galaxis eredeti, szűz formában megmaradt. A `galaxis_telepito.php`-ban található `blokk0()` függvény innen másolja át a megfelelő szerverre.
 
 Ha ezeket használni szeretnéd, hozz létre egy `szuz_bolygok` vagy hasonló nevű táblát (ez simán lehet `MyISAM` is), módosítsd úgy a kódot, hogy a `galaxis_generator_....php` oda generálja a bolygókat, és a `galaxis_telepito.php` onnan másolja be őket a tényleges `bolygok` táblába.
-
 
 ## Végjáték és idegen flották
 

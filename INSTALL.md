@@ -143,6 +143,13 @@ A `mysql` könyvtárból add ki ezt a két parancsot (és amikor kéri, add meg 
 
 Nem kell beszarni, hogy az "üres" adatbázis is sok idő alatt megy fel (10-15 perc). Van egy nagyon nagy tábla: `hexa_bolygo`, meg néhány középnagy: `bolygo_eroforras`, `flotta_hajo`, `hexak`, `bolygo_gyar_eroforras`. És ne feledd, a mellékelt adatbázis valójában nem üres, ott van benne a szűz Omen-galaxis (s8) egy csomó bolygóval, hexával és NPC-flottával.
 
+### Alternatív tartalom adatbázis betöltéshez
+
+Létrehoztam egy zanda_install_dump_for_development.sql fájlt, ez egy jóval kissebb, de fejlesztéshez elegendő rendszert hoz létre. Gyorsabb betölteni és dolgozni vele.
+
+	mysql -u zandaadmin -p --default-character-set=utf8 zanda < zanda_install_dump_for_development.sql
+
+Ezután ajánlott fejlesztői környezetben futtatni a `memory_to_myisam.sql` -t, ami MEMORY táblákat MyISAM táblákká alakítja, így nem vesznek el az adatok kikapcsolás során. Ez felettébb fontos lehet fejlesztői környezetben, vagy nem 100%-os rendelkezésreállású gépeknél.
 
 ## 3. PHP
 
